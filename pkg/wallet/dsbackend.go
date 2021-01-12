@@ -90,6 +90,10 @@ func (backend *DSBackend) ImportKey(ki *crypto.KeyInfo) error {
 	return backend.putKeyInfo(ki)
 }
 
+func (backend *DSBackend) DeleteKey(ki *crypto.KeyInfo) error {
+	return backend.deleteKeyInfo(ki)
+}
+
 // Addresses returns a list of all addresses that are stored in this backend.
 func (backend *DSBackend) Addresses() []address.Address {
 	backend.lk.RLock()
@@ -175,6 +179,23 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 	backend.cache[addr] = struct{}{}
 	backend.unLocked[addr] = ki
 
+	return nil
+}
+
+func (backend *DSBackend) deleteKeyInfo(ki *crypto.KeyInfo) error {
+	a, err := ki.Address()
+	if err != nil {
+		return err
+	}
+
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
+
+	if err := backend.ds.Delete(ds.NewKey(a.String())); err != nil {
+		return errors.Wrap(err, "failed to delete address")
+	}
+
+	delete(backend.cache, a)
 	return nil
 }
 

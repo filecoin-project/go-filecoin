@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"golang.org/x/xerrors"
 
@@ -25,12 +24,20 @@ const MinGasPremium = 100e3
 
 // const MaxSpendOnFeeDenom = 100
 
+var bigZero = big.NewInt(0)
+
 func (mp *MessagePool) GasEstimateFeeCap(
 	ctx context.Context,
 	msg *types.UnsignedMessage,
 	maxqueueblks int64,
 	tsk types.TipSetKey,
 ) (tbig.Int, error) {
+	tsk block.TipSetKey,
+) (big.Int, error) {
+	if big.Cmp(mp.GetGasConfig().GasFeeGap, big.NewInt(0)) > 0 {
+		return mp.GetGasConfig().GasFeeGap, nil
+	}
+
 	ts, err := mp.api.ChainHead()
 	if err != nil {
 		return types.NewGasFeeCap(0), err
@@ -72,7 +79,7 @@ func medianGasPremium(prices []gasMeta, blocks int) abi.TokenAmount {
 
 	premium := prev1
 	if prev2.Sign() != 0 {
-		premium = big.Div(tbig.Add(prev1, prev2), tbig.NewInt(2))
+		premium = big.Div(big.Add(prev1, prev2), big.NewInt(2))
 	}
 
 	return premium
@@ -85,6 +92,10 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	gaslimit int64,
 	_ types.TipSetKey,
 ) (tbig.Int, error) {
+	if big.Cmp(mp.GetGasConfig().GasPremium, big.NewInt(0)) > 0 {
+		return mp.GetGasConfig().GasPremium, nil
+	}
+
 	if nblocksincl == 0 {
 		nblocksincl = 1
 	}
@@ -94,7 +105,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 
 	ts, err := mp.api.ChainHead()
 	if err != nil {
-		return tbig.Int{}, err
+		return big.Int{}, err
 	}
 
 	for i := uint64(0); i < nblocksincl*2; i++ {
@@ -106,14 +117,14 @@ func (mp *MessagePool) GasEstimateGasPremium(
 		tsPKey := ts.Parents()
 		pts, err := mp.api.ChainTipSet(tsPKey)
 		if err != nil {
-			return tbig.Int{}, err
+			return big.Int{}, err
 		}
 
 		blocks += len(pts.Blocks())
 
 		msgs, err := mp.api.MessagesForTipset(pts)
 		if err != nil {
-			return tbig.Int{}, xerrors.Errorf("loading messages: %w", err)
+			return big.Int{}, xerrors.Errorf("loading messages: %w", err)
 		}
 		for _, msg := range msgs {
 			prices = append(prices, gasMeta{
@@ -127,14 +138,14 @@ func (mp *MessagePool) GasEstimateGasPremium(
 
 	premium := medianGasPremium(prices, blocks)
 
-	if tbig.Cmp(premium, tbig.NewInt(MinGasPremium)) < 0 {
+	if big.Cmp(premium, big.NewInt(MinGasPremium)) < 0 {
 		switch nblocksincl {
 		case 1:
-			premium = tbig.NewInt(2 * MinGasPremium)
+			premium = big.NewInt(2 * MinGasPremium)
 		case 2:
-			premium = tbig.NewInt(1.5 * MinGasPremium)
+			premium = big.NewInt(1.5 * MinGasPremium)
 		default:
-			premium = tbig.NewInt(MinGasPremium)
+			premium = big.NewInt(MinGasPremium)
 		}
 	}
 
@@ -142,8 +153,8 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	const precision = 32
 	// mean 1, stddev 0.005 => 95% within +-1%
 	noise := 1 + rand.NormFloat64()*0.005
-	premium = tbig.Mul(premium, tbig.NewInt(int64(noise*(1<<precision))+1))
-	premium = tbig.Div(premium, tbig.NewInt(1<<precision))
+	premium = big.Mul(premium, big.NewInt(int64(noise*(1<<precision))+1))
+	premium = big.Div(premium, big.NewInt(1<<precision))
 	return premium, nil
 }
 
@@ -162,8 +173,8 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 
 	msg := *msgIn
 	msg.GasLimit = constants.BlockGasLimit
-	msg.GasFeeCap = tbig.NewInt(int64(constants.MinimumBaseFee) + 1)
-	msg.GasPremium = tbig.NewInt(1)
+	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
+	msg.GasPremium = big.NewInt(1)
 
 	fromA, err := mp.api.StateAccountKey(ctx, msgIn.From, currTs)
 	if err != nil {
@@ -234,15 +245,54 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Mes
 		msg.GasPremium = gasPremium
 	}
 
+	// 为了匹配线上集群的配置情况，此处的逻辑应该是：
+	// - 如果 设置了 GasConfig.GasFeeCap，那么遵循 GasConfig.GasFeeCap, 否则进入后续判断
+	// - 如果 消息已经设置了 GasFeeCap， 那么使用消息设置的 GasFeeCap, 否则进入后续判断
+	// - 按标准公式计算, 如果设置了 MaxFee， 那么使用MaxFee 进行计算
+	feelog := log.With("from", msg.From.String(), "to", msg.To.String(), "method", msg.Method, "call", "GasEstimateMessageGas")
+
+	if feeCapOnVenus := mp.GetGasConfig().GasFeeGap; !feeCapOnVenus.Nil() && big.Cmp(feeCapOnVenus, bigZero) > 0 {
+		feelog.Infow("use fee cap configured on venus", "fee-cap", feeCapOnVenus)
+		msg.GasFeeCap = feeCapOnVenus
+	}
+
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
+		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, block.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
 		msg.GasFeeCap = feeCap
+
+		// CapGasFee 是在已经设置了 msg.GasFeeCap 的情况下， 将 GasLimit * GasFeeCap 控制在 MaxFee 之下， 因此需要先设置 FeeCap
+		if spec != nil && !spec.MaxFee.Nil() && big.Cmp(spec.MaxFee, big.NewInt(0)) > 0 {
+			maxFee := spec.Get().MaxFee
+			CapGasFee(mp.GetMaxFee, msg, maxFee)
+			feelog.Infow("use fee cap calculated by spec max fee", "max fee", spec.MaxFee, "fee-cap", msg.GasFeeCap)
+		} else {
+			feelog.Infow("use default estimating", "fee-cap", msg.GasFeeCap)
+		}
+	} else {
+		feelog.Infow("use fee cap from msg", "fee-cap", msg.GasFeeCap)
 	}
 
-	CapGasFee(mp.GetMaxFee, msg, spec)
+	if msg.Method == 7 && msg.GasLimit+7000000 < constants.BlockGasLimit {
+		msg.GasLimit += 7000000
+	}
+
+	// 通过硬性设置会导致：GasPremium 大于GasFeeCap,这样的消息后续会报错，因此如果出现这个情况后，设置两者相等z
+	// 在消息选择和消息被处理时，都会重新计算GasPremium的值
+	if big.Cmp(msg.GasPremium, msg.GasFeeCap) > 0 {
+		feelog.Infow("reset premium", "before", msg.GasPremium, "after", msg.GasFeeCap)
+		msg.GasPremium = msg.GasFeeCap
+	}
+
+	c, err := msg.Cid()
+	if err != nil {
+		log.Infow("get msg cid err: %s", err)
+	} else {
+		feelog.Infow("final result", "mcid", c, "premium", msg.GasPremium,
+			"limit", msg.GasLimit, "fee-cap", msg.GasFeeCap, "total", big.Mul(msg.GasFeeCap, big.NewInt(msg.GasLimit)))
+	}
 
 	return msg, nil
 }

@@ -31,7 +31,7 @@ var walletCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"balance":      balanceCmd,
 		"import":       walletImportCmd,
-		"export":       walletExportCmd,
+		// "export":       walletExportCmd,
 		"ls":           addrsLsCmd,
 		"new":          addrsNewCmd,
 		"default":      defaultAddressCmd,
@@ -78,6 +78,26 @@ var addrsNewCmd = &cmds.Command{
 
 		return printOneString(re, addr.String())
 	},
+}
+
+var addrsDelCmd = &cmds.Command{
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", true, false, "address to del"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		addr, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		err = env.(*node.Env).WalletAPI.WalletDelAddress(req.Context, addr)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(&AddressResult{addr})
+	},
+	Type: &AddressResult{},
 }
 
 var addrsLsCmd = &cmds.Command{

@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus/app/paths"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+
+	"github.com/filecoin-project/venus/app/paths"
+	"github.com/filecoin-project/venus/pkg/jsonrpc2"
 )
 
 func getVenusClientInfo() (string, http.Header, error) {

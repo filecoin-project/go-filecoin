@@ -1,9 +1,10 @@
 package util
 
 import (
-	"github.com/filecoin-project/go-jsonrpc"
 	xerrors "github.com/pkg/errors"
 	"reflect"
+
+	"github.com/filecoin-project/venus/pkg/jsonrpc2"
 )
 
 type RPCService interface {

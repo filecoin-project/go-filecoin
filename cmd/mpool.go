@@ -26,16 +26,17 @@ var mpoolCmd = &cmds.Command{
 		Tagline: "Manage message pool",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"pending":  mpoolPending,
-		"clear":    mpoolClear,
-		"sub":      mpoolSub,
-		"stat":     mpoolStat,
-		"replace":  mpoolReplaceCmd,
-		"find":     mpoolFindCmd,
-		"config":   mpoolConfig,
-		"gas-perf": mpoolGasPerfCmd,
-		"publish":  mpoolPublish,
-		"delete":   mpoolDeleteAddress,
+		"pending":   mpoolPending,
+		"clear":     mpoolClear,
+		"sub":       mpoolSub,
+		"stat":      mpoolStat,
+		"replace":   mpoolReplaceCmd,
+		"find":      mpoolFindCmd,
+		"config":    mpoolConfig,
+		"gasConfig": mpoolGasConfig,
+		"gas-perf":  mpoolGasPerfCmd,
+		"publish":   mpoolPublish,
+		"delete":    mpoolDeleteAddress,
 	},
 }
 
@@ -639,9 +640,40 @@ var mpoolConfig = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		_ = re.Emit(cfg)
 
-		return nil
+		return re.Emit(cfg)
+	},
+}
+
+var mpoolGasConfig = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "gas config",
+		ShortDescription: "get or set current mpool gas configuration",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cfg", false, false, "gas config"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := context.TODO()
+
+		if len(req.Arguments) > 0 {
+			cfg := new(messagepool.MpoolGasConfig)
+
+			paras := req.Arguments[0]
+			err := json.Unmarshal([]byte(paras), cfg)
+			if err != nil {
+				return err
+			}
+
+			return env.(*node.Env).MessagePoolAPI.MpoolSetGasConfig(ctx, cfg)
+		}
+
+		cfg, err := env.(*node.Env).MessagePoolAPI.MpoolGetGasConfig(ctx)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(cfg)
 	},
 }
 

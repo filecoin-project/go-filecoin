@@ -116,13 +116,13 @@ func initRun(req *cmds.Request) error {
 	}
 
 	// genesis node
+	node.SetNetParams(cfg.NetworkParams)
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
 		preTp := req.Options[preTemplateFlag]
 		if preTp == nil {
 			return xerrors.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
 		}
 
-		node.SetNetParams(cfg.NetworkParams)
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)

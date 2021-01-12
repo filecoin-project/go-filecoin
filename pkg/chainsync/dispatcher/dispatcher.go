@@ -120,6 +120,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 
 	go d.syncWorker(syncingCtx)
 }
+
 func (d *Dispatcher) processIncoming(ctx context.Context) {
 	defer func() {
 		log.Info("exiting sync dispatcher")

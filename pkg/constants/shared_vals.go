@@ -2,6 +2,7 @@ package constants
 
 import (
 	"math/big"
+	"os"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
@@ -37,6 +38,10 @@ func SetAddressNetwork(n address.Network) {
 }
 
 func init() {
+	if os.Getenv("VENUS_USE_TEST_ADDRESSES") != "1" {
+		SetAddressNetwork(address.Mainnet)
+	}
+
 	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
 

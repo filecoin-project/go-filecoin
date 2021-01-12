@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-address"
@@ -18,7 +19,8 @@ var (
 	PruneCooldownDefault      = time.Minute
 	GasLimitOverestimation    = 1.25
 
-	ConfigKey = datastore.NewKey("/mpool/config")
+	ConfigKey    = datastore.NewKey("/mpool/config")
+	ConfigGasKey = datastore.NewKey("/mpool/gas/config")
 )
 
 type MpoolConfig struct {
@@ -104,5 +106,70 @@ func DefaultConfig() *MpoolConfig {
 		ReplaceByFeeRatio:      ReplaceByFeeRatioDefault,
 		PruneCooldown:          PruneCooldownDefault,
 		GasLimitOverestimation: GasLimitOverestimation,
+	}
+}
+
+type MpoolGasConfig struct {
+	GasPremium big.Int
+	GasFeeGap  big.Int
+}
+
+func (mgc *MpoolGasConfig) Clone() *MpoolGasConfig {
+	c := new(MpoolGasConfig)
+	*c = *mgc
+	return c
+}
+
+func loadGasConfig(ds repo.Datastore) (*MpoolGasConfig, error) {
+	haveCfg, err := ds.Has(ConfigGasKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if !haveCfg {
+		return DefaultGasConfig(), nil
+	}
+
+	gCfgBytes, err := ds.Get(ConfigGasKey)
+	if err != nil {
+		return nil, err
+	}
+	gCfg := new(MpoolGasConfig)
+	err = json.Unmarshal(gCfgBytes, gCfg)
+	return gCfg, err
+}
+
+func saveGasConfig(gCfg *MpoolGasConfig, ds repo.Datastore) error {
+	cfgBytes, err := json.Marshal(gCfg)
+	if err != nil {
+		return err
+	}
+	return ds.Put(ConfigGasKey, cfgBytes)
+}
+
+func (mp *MessagePool) GetGasConfig() *MpoolGasConfig {
+	mp.gcfgLk.Lock()
+	defer mp.gcfgLk.Unlock()
+	return mp.gcfg.Clone()
+}
+
+func (mp *MessagePool) SetGasConfig(gcfg *MpoolGasConfig) error {
+	gcfg = gcfg.Clone()
+
+	mp.gcfgLk.Lock()
+	mp.gcfg = gcfg
+	err := saveGasConfig(gcfg, mp.ds)
+	if err != nil {
+		log.Warnf("error persisting mpool gas config: %s", err)
+	}
+	mp.gcfgLk.Unlock()
+
+	return nil
+}
+
+func DefaultGasConfig() *MpoolGasConfig {
+	return &MpoolGasConfig{
+		GasPremium: big.NewInt(0),
+		GasFeeGap:  big.NewInt(0),
 	}
 }

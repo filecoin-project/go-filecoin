@@ -243,3 +243,24 @@ func (w *Wallet) HavePassword() bool {
 	}
 	return backend.HavePassword()
 }
+
+func (w *Wallet) WalletDelete(ctx context.Context, addr address.Address) error {
+	bk, err := w.Find(addr)
+	if err != nil {
+		return err
+	}
+
+	backends := w.Backends(DSBackendType)
+	if len(backends) == 0 {
+		return fmt.Errorf("missing default ds backend")
+	}
+
+	backend := (backends[0]).(*DSBackend)
+
+	ki, err := bk.GetKeyInfo(addr)
+	if err != nil {
+		return err
+	}
+
+	return backend.DeleteKey(ki)
+}
