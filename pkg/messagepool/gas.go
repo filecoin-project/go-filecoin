@@ -31,8 +31,6 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	msg *types.UnsignedMessage,
 	maxqueueblks int64,
 	tsk types.TipSetKey,
-) (tbig.Int, error) {
-	tsk block.TipSetKey,
 ) (big.Int, error) {
 	if big.Cmp(mp.GetGasConfig().GasFeeGap, big.NewInt(0)) > 0 {
 		return mp.GetGasConfig().GasFeeGap, nil
@@ -91,7 +89,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	sender address.Address,
 	gaslimit int64,
 	_ types.TipSetKey,
-) (tbig.Int, error) {
+) (big.Int, error) {
 	if big.Cmp(mp.GetGasConfig().GasPremium, big.NewInt(0)) > 0 {
 		return mp.GetGasConfig().GasPremium, nil
 	}
@@ -257,7 +255,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Mes
 	}
 
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, block.TipSetKey{})
+		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
@@ -265,8 +263,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Mes
 
 		// CapGasFee 是在已经设置了 msg.GasFeeCap 的情况下， 将 GasLimit * GasFeeCap 控制在 MaxFee 之下， 因此需要先设置 FeeCap
 		if spec != nil && !spec.MaxFee.Nil() && big.Cmp(spec.MaxFee, big.NewInt(0)) > 0 {
-			maxFee := spec.Get().MaxFee
-			CapGasFee(mp.GetMaxFee, msg, maxFee)
+			CapGasFee(mp.GetMaxFee, msg, spec)
 			feelog.Infow("use fee cap calculated by spec max fee", "max fee", spec.MaxFee, "fee-cap", msg.GasFeeCap)
 		} else {
 			feelog.Infow("use default estimating", "fee-cap", msg.GasFeeCap)
@@ -286,13 +283,8 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Mes
 		msg.GasPremium = msg.GasFeeCap
 	}
 
-	c, err := msg.Cid()
-	if err != nil {
-		log.Infow("get msg cid err: %s", err)
-	} else {
-		feelog.Infow("final result", "mcid", c, "premium", msg.GasPremium,
-			"limit", msg.GasLimit, "fee-cap", msg.GasFeeCap, "total", big.Mul(msg.GasFeeCap, big.NewInt(msg.GasLimit)))
-	}
+	feelog.Infow("final result", "mcid", msg.Cid(), "premium", msg.GasPremium,
+		"limit", msg.GasLimit, "fee-cap", msg.GasFeeCap, "total", big.Mul(msg.GasFeeCap, big.NewInt(msg.GasLimit)))
 
 	return msg, nil
 }

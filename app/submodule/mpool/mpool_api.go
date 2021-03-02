@@ -78,7 +78,7 @@ func (a *MessagePoolAPI) MpoolSetGasConfig(ctx context.Context, cfg *messagepool
 	return a.mp.MPool.SetGasConfig(cfg)
 }
 
-func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk block.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
+func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
 	ts, err := a.mp.chain.API().ChainGetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
