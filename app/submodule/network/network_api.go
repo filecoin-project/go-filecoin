@@ -67,7 +67,7 @@ type Version struct {
 }
 
 func (networkAPI *NetworkAPI) Version(context.Context) (Version, error) {
-	v, err := constants.VersionForType(constants.NodeMiner)
+	v, err := constants.VersionForType(constants.NodeFull)
 	if err != nil {
 		return Version{}, err
 	}
