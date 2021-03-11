@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/venus/pkg/config"
 )
@@ -38,6 +39,7 @@ func Mainnet() *NetworkConf {
 			//	int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
 			//	int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 			//},
+			NetworkType:            constants.NetworkMainnet,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 10 << 40,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{

@@ -11,6 +11,6 @@ iptb:
 
 clean:
 	rm ./venus
-	rm -rf ./extern/fil-blst
+
 	rm -rf ./extern/filecoin-ffi
 	rm -rf ./extern/test-vectors

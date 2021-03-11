@@ -3,6 +3,7 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/venus/pkg/config"
 )
@@ -15,6 +16,7 @@ func Net2k() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
+			NetworkType:            constants.Network2k,
 			BlockDelay:             4,
 			ConsensusMinerMinPower: 2048,
 			MinVerifiedDealSize:    256,
@@ -32,7 +34,7 @@ func Net2k() *NetworkConf {
 				UpgradeKumquatHeight:  15,
 				UpgradeCalicoHeight:   20,
 				UpgradePersianHeight:  25,
-				UpgradeOrangeHeight:   27,
+				UpgradeOrangeHeight:   888888888888,
 				UpgradeActorsV3Height: -1,
 
 				BreezeGasTampingDuration: 0,

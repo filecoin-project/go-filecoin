@@ -106,7 +106,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	}*/
 
 	//chain fork
-	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
+	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := slashing.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
@@ -267,7 +267,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}*/
 
 	//chain fork
-	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
+	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := slashing.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {

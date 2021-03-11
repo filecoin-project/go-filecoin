@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 func Calibration() *NetworkConf {
@@ -19,6 +20,7 @@ func Calibration() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
+			NetworkType:            constants.NetworkCalibnet,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 32 << 30,
 			ReplaceProofTypes: []int64{

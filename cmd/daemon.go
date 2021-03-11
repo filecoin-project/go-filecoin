@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -61,12 +60,6 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(Network, "when set, populates config with network specific parameters").WithDefault("testnetnet"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		network, _ := req.Options[Network].(string)
-		if err := constants.SetBuildType(network); err != nil {
-			log.Errorf("Error setting BuildType %s", err)
-			return err
-		}
-
 		repoDir, _ := req.Options[OptionRepoDir].(string)
 		repoDir, err := paths.GetRepoPath(repoDir)
 		if err != nil {

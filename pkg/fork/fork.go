@@ -316,20 +316,22 @@ type ChainFork struct {
 	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	// upgrade param
+	networkType int
 	forkUpgrade *config.ForkUpgradeConfig
 }
 
-func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore, bs blockstore.Blockstore, forkUpgrade *config.ForkUpgradeConfig) (*ChainFork, error) {
+func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore, bs blockstore.Blockstore, networkParams *config.NetworkParamsConfig) (*ChainFork, error) {
 
 	fork := &ChainFork{
 		cr:          cr,
 		bs:          bs,
 		ipldstore:   ipldstore,
-		forkUpgrade: forkUpgrade,
+		networkType: networkParams.NetworkType,
+		forkUpgrade: networkParams.ForkUpgradeParam,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.
-	us := defaultUpgradeSchedule(fork, forkUpgrade)
+	us := defaultUpgradeSchedule(fork, networkParams.ForkUpgradeParam)
 	if err := us.Validate(); err != nil {
 		return nil, err
 	}
@@ -1476,7 +1478,7 @@ func (c *ChainFork) UpgradeActorsV3(ctx context.Context, cache MigrationCache, r
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
 
-	if constants.BuildType == constants.BuildMainnet {
+	if c.networkType == constants.NetworkMainnet {
 		err := terminateActor(ctx, tree, types.ZeroAddress, epoch)
 		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %v", err)
